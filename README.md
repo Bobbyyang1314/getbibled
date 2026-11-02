@@ -38,7 +38,14 @@ For GitHub Pages, the custom domain goes in a file named `CNAME` containing only
 - Written new: `who-is-god.html`, `whats-next.html`, `404.html`. Their teaching text is a draft and the KJV quotations should be checked.
 - `assets/qa-data.js` is not used by any page.
 
-## Sign-in page (`login.html`)
-Works in preview mode until `assets/config.js` is filled in with a Supabase project URL and the public anon key (never the service_role key).
-It is not linked from the menu yet; add `<a href="login.html">Sign In</a>` to the nav in every page when it is ready.
-In Supabase: Authentication -> URL Configuration, add your site address as the Site URL / redirect URL.
+## Sign-in flow
+- `index.html` is the sign-in / create-account page and the first thing visitors see.
+- `home.html` is the main page. Visitors go there after signing in.
+- Every other page loads `assets/config.js` and `assets/guard.js`. When sign-in is configured, a visitor who is not signed in is sent to `index.html` and returned to the page they wanted after signing in. A "Sign Out" link appears in the menu.
+- Preview mode: while `assets/config.js` is empty, nothing is sent or saved and every page stays open. The sign-in page shows a "Continue to the site" link.
+- The guard controls the visitor flow only. On GitHub Pages the page files and the repository are still public, so do not put private content in them.
+
+### Connect Supabase
+1. Create a project at supabase.com.
+2. Put the Project URL and the public anon (publishable) key in `assets/config.js`. Never the service_role / secret key.
+3. Authentication -> URL Configuration: set Site URL to the site address and add `.../index.html` as a redirect URL. Confirmation and password-reset emails return there.

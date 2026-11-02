@@ -7,7 +7,8 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var tabs = { signin: $('tab-signin'), signup: $('tab-signup') };
-  var forms = { signin: $('form-signin'), signup: $('form-signup'), reset: $('form-reset') };
+  var forms = { signin: $('form-signin'), signup: $('form-signup'), reset: $('form-reset'), newpw: $('form-newpw') };
+  var recovering = /type=recovery/.test(location.hash);
   var status = $('auth-status'), signedIn = $('signed-in'), formsBox = $('auth-forms');
 
   function say(msg, kind) {
@@ -24,7 +25,7 @@
     tabs.signup.setAttribute('aria-selected', String(name === 'signup'));
     tabs.signin.classList.toggle('on', name === 'signin');
     tabs.signup.classList.toggle('on', name === 'signup');
-    $('tabs').hidden = (name === 'reset');
+    $('tabs').hidden = (name === 'reset' || name === 'newpw');
     say('');
     var first = forms[name].querySelector('input'); if (first) first.focus();
   }
@@ -48,10 +49,13 @@
     };
   });
 
+  // Where to go after signing in: the page the visitor asked for, or the main page.
+  function nextPage() {
+    var n = new URLSearchParams(location.search).get('next') || '';
+    return /^[a-z0-9-]+\.html([?#][^]*)?$/i.test(n) && n.indexOf('index.html') !== 0 ? n : 'home.html';
+  }
   function render(session) {
-    var on = !!(session && session.user);
-    signedIn.hidden = !on; formsBox.hidden = on;
-    if (on) $('who').textContent = session.user.email;
+    if (session && session.user && !recovering) location.replace(nextPage());
   }
 
   function load(cb) {
@@ -72,7 +76,7 @@
     sb.auth.signInWithPassword({ email: email, password: pw }).then(function (r) {
       busy(forms.signin, false);
       if (r.error) return say(r.error.message, 'err');
-      render(r.data.session); say('');
+      render(r.data.session);
     });
   });
 
@@ -85,7 +89,7 @@
     if (!$('su-consent').checked) return say('Please agree to the terms to create an account.', 'err');
     if (!configured) return previewNotice();
     busy(forms.signup, true);
-    sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname } }).then(function (r) {
+    sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname.replace(/[^/]*$/, 'index.html') } }).then(function (r) {
       busy(forms.signup, false);
       if (r.error) return say(r.error.message, 'err');
       if (r.data.session) { render(r.data.session); return; }
@@ -100,17 +104,27 @@
     if (!valid(email)) return say('Enter the email address for your account.', 'err');
     if (!configured) return previewNotice();
     busy(forms.reset, true);
-    sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname }).then(function (r) {
+    sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname.replace(/[^/]*$/, 'index.html') }).then(function (r) {
       busy(forms.reset, false);
       if (r.error) return say(r.error.message, 'err');
       say('If an account exists for that email, a reset link is on its way.', 'ok');
     });
   });
 
-  $('sign-out').onclick = function () {
-    if (!configured) return;
-    sb.auth.signOut().then(function () { render(null); say('You have been signed out.', 'ok'); });
-  };
+  forms.newpw.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var pw = $('np-password').value, pw2 = $('np-confirm').value;
+    if (pw.length < 8) return say('Use at least 8 characters for your password.', 'err');
+    if (pw !== pw2) return say('The two passwords do not match.', 'err');
+    busy(forms.newpw, true);
+    sb.auth.updateUser({ password: pw }).then(function (r) {
+      busy(forms.newpw, false);
+      if (r.error) return say(r.error.message, 'err');
+      recovering = false;
+      say('Password updated. Taking you to Get Bibled…', 'ok');
+      setTimeout(function () { location.replace('home.html'); }, 900);
+    });
+  });
 
   show('signin');
   if (!configured) {
@@ -118,8 +132,11 @@
   } else {
     load(function () {
       sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+      sb.auth.onAuthStateChange(function (event, session) {
+        if (event === 'PASSWORD_RECOVERY') { recovering = true; show('newpw'); return; }
+        render(session);
+      });
       sb.auth.getSession().then(function (r) { render(r.data && r.data.session); });
-      sb.auth.onAuthStateChange(function (_e, session) { render(session); });
     });
   }
 })();
