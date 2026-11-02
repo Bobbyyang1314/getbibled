@@ -29,6 +29,11 @@
     say('');
     var first = forms[name].querySelector('input'); if (first) first.focus();
   }
+  // Preview mode: any valid email and password lets the visitor in. No account is created or checked.
+  function previewEnter() {
+    say('Preview mode: signing you in…', 'ok');
+    location.replace(nextPage());
+  }
   function previewNotice() {
     say('This is a design preview. No account was created and nothing was sent. Sign-in will be connected before launch.', 'info');
   }
@@ -71,7 +76,7 @@
     var email = $('si-email').value.trim(), pw = $('si-password').value;
     if (!valid(email)) return say('Enter a valid email address.', 'err');
     if (!pw) return say('Enter your password.', 'err');
-    if (!configured) return previewNotice();
+    if (!configured) return previewEnter();
     busy(forms.signin, true);
     sb.auth.signInWithPassword({ email: email, password: pw }).then(function (r) {
       busy(forms.signin, false);
@@ -87,7 +92,7 @@
     if (pw.length < 8) return say('Use at least 8 characters for your password.', 'err');
     if (pw !== pw2) return say('The two passwords do not match.', 'err');
     if (!$('su-consent').checked) return say('Please agree to the terms to create an account.', 'err');
-    if (!configured) return previewNotice();
+    if (!configured) return previewEnter();
     busy(forms.signup, true);
     sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin + location.pathname.replace(/[^/]*$/, 'index.html') } }).then(function (r) {
       busy(forms.signup, false);
