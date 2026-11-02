@@ -37,3 +37,8 @@ For GitHub Pages, the custom domain goes in a file named `CNAME` containing only
 - `assets/style.css`, `site.js`, `promises-data.js`, `qa-topics.js` and all images are the originals. A small marked supplement at the end of `style.css` styles the volunteer form.
 - Written new: `who-is-god.html`, `whats-next.html`, `404.html`. Their teaching text is a draft and the KJV quotations should be checked.
 - `assets/qa-data.js` is not used by any page.
+
+## Sign-in page (`login.html`)
+Works in preview mode until `assets/config.js` is filled in with a Supabase project URL and the public anon key (never the service_role key).
+It is not linked from the menu yet; add `<a href="login.html">Sign In</a>` to the nav in every page when it is ready.
+In Supabase: Authentication -> URL Configuration, add your site address as the Site URL / redirect URL.
